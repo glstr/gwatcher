@@ -37,6 +37,12 @@ func main() {
 						Value: "udp",
 						Usage: "server protocol, support udp & quic",
 					},
+
+					&cli.StringFlag{
+						Name:  "address, addr",
+						Value: "127.0.0.1:443",
+						Usage: "server protocol, support udp & quic",
+					},
 				},
 			},
 			{
@@ -52,7 +58,7 @@ func main() {
 					},
 
 					&cli.StringFlag{
-						Name:  "adrress, addr",
+						Name:  "address, addr",
 						Value: "127.0.0.1:443",
 						Usage: "server protocol, support udp & quic",
 					},
