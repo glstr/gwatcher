@@ -7,11 +7,10 @@ import (
 )
 
 func StartClient(c *cli.Context) error {
-	var addr string = "127.0.0.1:8888"
-	if c.String("address") != "" {
-		addr = c.String("address")
-	}
-	cli := client.NewUdpClient(addr)
+	//var addr string = "localhost:8888"
+	addr := c.String("addr")
+	protocol := c.String("protocol")
+	cli := client.NewClient(protocol, addr)
 	go cli.Start()
 	util.WaitSignal()
 	return nil

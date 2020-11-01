@@ -8,7 +8,8 @@ import (
 
 func StartServer(c *cli.Context) error {
 	defaultAddr := "0.0.0.0:8888"
-	ser := server.NewUdpServer(defaultAddr)
+	protocol := c.String("protocol")
+	ser := server.NewServer(protocol, defaultAddr)
 	go ser.Start()
 	util.WaitSignal()
 	return nil

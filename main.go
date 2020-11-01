@@ -15,17 +15,17 @@ func main() {
 		Usage: "watcher who always watchs the world",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "lang, l",
+				Name:  "lang,l",
 				Value: "english",
 				Usage: "Language for the greeting",
 			},
 			&cli.StringFlag{
-				Name:  "config, c",
+				Name:  "config,c",
 				Usage: "Load configuration from `FILE`",
 			},
 		},
 
-		Commands: []*cli.Command{
+		Commands: []cli.Command{
 			{
 				Name:    "server",
 				Aliases: []string{"ser"},
@@ -33,13 +33,13 @@ func main() {
 				Action:  action.StartServer,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "protocol, p",
+						Name:  "protocol,p",
 						Value: "udp",
 						Usage: "server protocol, support udp & quic",
 					},
 
 					&cli.StringFlag{
-						Name:  "address, addr",
+						Name:  "address,addr",
 						Value: "127.0.0.1:443",
 						Usage: "server protocol, support udp & quic",
 					},
