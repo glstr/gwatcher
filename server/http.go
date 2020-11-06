@@ -1,9 +1,12 @@
 package server
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 type HttpServer struct {
-	addr
+	addr string
 }
 
 func NewHttpServer(addr string) *HttpServer {
@@ -15,7 +18,12 @@ func NewHttpServer(addr string) *HttpServer {
 func (s *HttpServer) Start() error {
 	http.HandleFunc("/helloworld", helloHandle)
 
-	http.ListenAndServe(s.addr, nil)
+	server := http.Server{
+		Addr:        s.addr,
+		IdleTimeout: 5 * time.Second,
+	}
+	//http.ListenAndServe(s.addr, nil)
+	server.ListenAndServe()
 	return nil
 }
 

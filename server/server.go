@@ -5,6 +5,7 @@ const (
 	PUdp   = "udp"
 	PHttp3 = "http3"
 	PTls   = "tls"
+	PHttp  = "http"
 )
 
 type Server interface {
@@ -22,6 +23,8 @@ func NewServer(protocol string, addr string) Server {
 		return NewHttp3Server(addr)
 	case PTls:
 		return NewTlsServer(addr)
+	case PHttp:
+		return NewHttpServer(addr)
 	default:
 		return NewQuicServer(addr)
 	}

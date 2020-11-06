@@ -1,8 +1,8 @@
 package client
 
 import (
-	"bufio"
 	"crypto/tls"
+	"time"
 
 	"github.com/glstr/gwatcher/util"
 )
@@ -27,14 +27,25 @@ func (c *TlsClient) Start() error {
 		util.Notice("dial failed, error_msg:%s", err.Error())
 		return err
 	}
-	//defer conn.Close()
-	msg := "hello world"
-	writer := bufio.NewWriter(conn)
-	count, err := writer.Write([]byte(msg))
-	if err != nil {
-		util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
-		return err
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			util.Notice("close failed, error_msg:%s", err.Error())
+		}
+	}()
+	for {
+		msg := "hello world"
+		//writer := bufio.NewWriter(conn)
+		util.Notice("start write")
+		timeout := time.Now().Add(15 * time.Second)
+		conn.SetWriteDeadline(timeout)
+		count, err := conn.Write([]byte(msg))
+		if err != nil {
+			util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
+			return err
+		}
+		util.Notice("write count:%d", count)
 	}
-	util.Notice("write count:%d", count)
-	return writer.Flush()
+	//return writer.Flush()
+	return nil
 }

@@ -15,6 +15,7 @@ const (
 	PUdp   = "udp"
 	PTls   = "tls"
 	PHttp3 = "http3"
+	PHttp  = "http"
 )
 
 type Client interface {
@@ -31,6 +32,8 @@ func NewClient(protocol, addr string) Client {
 		return NewTlsClient(addr)
 	case PHttp3:
 		return NewHttp3Client(addr)
+	case PHttp:
+		return NewHttpClient(addr)
 	default:
 		return NewQuicClient(addr)
 	}

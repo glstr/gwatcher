@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/glstr/gwatcher/util"
 	"github.com/lucas-clemente/quic-go/http3"
 )
 
@@ -30,6 +31,7 @@ func (s *Http3Server) Stop() {
 }
 
 func helloHandle(res http.ResponseWriter, req *http.Request) {
+	util.Notice("receive request")
 	result := `{"hello":"world"}`
 	res.Write([]byte(result))
 }
