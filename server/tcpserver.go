@@ -98,6 +98,8 @@ func reqAfterEOF(conn net.Conn, done <-chan struct{}) error {
 		if err != nil {
 			util.Notice("read failed, error_msg:%s", err.Error())
 			if err == io.EOF {
+				conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+				time.Sleep(2 * time.Second)
 				err := conn.Close()
 				if err != nil {
 					util.Notice("close failed, error_msg:%s", err.Error())
