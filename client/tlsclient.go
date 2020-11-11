@@ -1,27 +1,30 @@
 package client
 
 import (
-	"net"
+	"crypto/tls"
 	"time"
 
 	"github.com/glstr/gwatcher/util"
 )
 
-type TcpClient struct {
+type TlsClient struct {
 	addr string
 }
 
-func NewTcpClient(addr string) *TcpClient {
-	return &TcpClient{
+func NewTlsClient(addr string) *TlsClient {
+	return &TlsClient{
 		addr: addr,
 	}
 }
 
-func (c *TcpClient) Start() error {
-	util.Notice("start tcp client, add:%s", c.addr)
-	conn, err := net.Dial("tcp", c.addr)
+func (c *TlsClient) Start() error {
+	util.Notice("start tls client, add:%s", c.addr)
+	cfg := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	conn, err := tls.Dial("tcp", c.addr, cfg)
 	if err != nil {
-		util.Notice("dial tcp failed, error_msg:%s", err.Error())
+		util.Notice("dial tls failed, error_msg:%s", err.Error())
 		return err
 	}
 
@@ -34,6 +37,7 @@ func (c *TcpClient) Start() error {
 
 	for {
 		msg := "hello world"
+		//writer := bufio.NewWriter(conn)
 		util.Notice("start write")
 		timeout := time.Now().Add(15 * time.Second)
 		conn.SetWriteDeadline(timeout)
@@ -42,8 +46,9 @@ func (c *TcpClient) Start() error {
 			util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
 			return err
 		}
+		return err
 		util.Notice("write count:%d", count)
-		return nil
 	}
+	//return writer.Flush()
 	return nil
 }

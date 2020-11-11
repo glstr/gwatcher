@@ -22,7 +22,7 @@ func (s *HttpServer) Start() error {
 		Addr:        s.addr,
 		IdleTimeout: 5 * time.Second,
 	}
-	//http.ListenAndServe(s.addr, nil)
+
 	server.ListenAndServe()
 	return nil
 }

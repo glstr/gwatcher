@@ -13,6 +13,7 @@ import (
 const (
 	PQuic  = "quic"
 	PUdp   = "udp"
+	PTcp   = "tcp"
 	PTls   = "tls"
 	PHttp3 = "http3"
 	PHttp  = "http"
@@ -28,6 +29,8 @@ func NewClient(protocol, addr string) Client {
 		return NewUdpClient(addr)
 	case PQuic:
 		return NewQuicClient(addr)
+	case PTcp:
+		return NewTcpClient(addr)
 	case PTls:
 		return NewTlsClient(addr)
 	case PHttp3:

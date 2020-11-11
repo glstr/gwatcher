@@ -4,6 +4,7 @@ const (
 	PQuic  = "quic"
 	PUdp   = "udp"
 	PHttp3 = "http3"
+	PTcp   = "tcp"
 	PTls   = "tls"
 	PHttp  = "http"
 )
@@ -21,6 +22,8 @@ func NewServer(protocol string, addr string) Server {
 		return NewQuicServer(addr)
 	case PHttp3:
 		return NewHttp3Server(addr)
+	case PTcp:
+		return NewTcpServer(addr)
 	case PTls:
 		return NewTlsServer(addr)
 	case PHttp:
