@@ -1,13 +1,11 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"encoding/json"
 	"io"
 	"log"
 
+	"github.com/glstr/gwatcher/msg"
 	"github.com/glstr/gwatcher/util"
 	quic "github.com/lucas-clemente/quic-go"
 )
@@ -24,6 +22,7 @@ func NewQuicServer(addr string) *QuicServer {
 
 func (s *QuicServer) Start() error {
 	log.Printf("start quic server")
+	//quic.utils.DefaultLogger.SetLogLevel(utils.LogLevelDebug)
 	listener, err := quic.ListenAddr(s.addr, util.GenerateTLSConfig(), nil)
 	if err != nil {
 		return err
@@ -38,6 +37,8 @@ func (s *QuicServer) Start() error {
 
 		log.Printf("accept success")
 		go handleSession(sess)
+		//handler := NewQuicHanlder(sess)
+		//go handler.Start()
 	}
 }
 
@@ -60,15 +61,15 @@ func handleSession(sess quic.Session) error {
 
 type QuicHandler struct {
 	s          quic.Session
-	readQueue  chan *MessageContainer
-	writeQueue chan *MessageContainer
+	readQueue  chan *msg.MessageContainer
+	writeQueue chan *msg.MessageContainer
 }
 
 func NewQuicHanlder(s quic.Session) *QuicHandler {
 	return &QuicHandler{
 		s:          s,
-		readQueue:  make(chan *MessageContainer, 1024),
-		writeQueue: make(chan *MessageContainer, 1024),
+		readQueue:  make(chan *msg.MessageContainer, 1024),
+		writeQueue: make(chan *msg.MessageContainer, 1024),
 	}
 }
 
@@ -92,7 +93,7 @@ func (qh *QuicHandler) ReadLoop() error {
 
 func (qh *QuicHandler) readFromStream(stream quic.Stream) error {
 	defer stream.CancelRead(0)
-	parser := NewParser()
+	parser := msg.NewParser()
 	msg, err := parser.Unmarshal(stream)
 	if err != nil {
 		log.Printf("parse stream packet failed:%s", err.Error())
@@ -125,14 +126,14 @@ func (qh *QuicHandler) WriteLoop() {
 	}
 }
 
-func (qh *QuicHandler) WriteToStream(res *MessageContainer) error {
+func (qh *QuicHandler) WriteToStream(res *msg.MessageContainer) error {
 	stream, err := qh.s.OpenUniStream()
 	if err != nil {
 		log.Printf("open stream failed")
 		return err
 	}
 	defer stream.CancelWrite(0)
-	parser := NewParser()
+	parser := msg.NewParser()
 	err = parser.Marshal(stream, res)
 	if err != nil {
 		log.Printf("parser marshal failed")
@@ -141,68 +142,9 @@ func (qh *QuicHandler) WriteToStream(res *MessageContainer) error {
 	return nil
 }
 
-func (qh *QuicHandler) process(req *MessageContainer) *MessageContainer {
-	res := &MessageContainer{}
+func (qh *QuicHandler) process(req *msg.MessageContainer) *msg.MessageContainer {
+	res := &msg.MessageContainer{}
 	res.Id = req.Id + 100000
 	res.Data = req.Data
 	return res
-}
-
-type MessageContainer struct {
-	Id   uint64
-	Data string
-}
-
-type Parser interface {
-	Unmarshal(io.Reader) (*MessageContainer, error)
-	Marshal(io.Writer, *MessageContainer) error
-}
-
-func NewParser() Parser {
-	return &parser{}
-}
-
-// message packet format: len(4 bytes) + json body
-type parser struct{}
-
-func (p *parser) Unmarshal(reader io.Reader) (*MessageContainer, error) {
-	buf := make([]byte, 4)
-	_, err := io.ReadFull(reader, buf)
-	if err != nil {
-		log.Printf("read len failed:%s", err.Error())
-		return nil, err
-	}
-
-	len := binary.BigEndian.Uint64(buf)
-	bodyBuf := make([]byte, len)
-	_, err = io.ReadFull(reader, bodyBuf)
-	if err != nil {
-		log.Printf("read body failed:%s", err.Error())
-		return nil, err
-	}
-
-	msg := &MessageContainer{}
-	err = json.Unmarshal(bodyBuf, msg)
-	if err != nil {
-		log.Printf("get MessageContainer failed:%s", err.Error())
-		return nil, err
-	}
-
-	return msg, nil
-}
-
-func (p *parser) Marshal(writer io.Writer, msg *MessageContainer) error {
-	msgByte, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("json marshal failed:%s", err.Error())
-		return err
-	}
-
-	len := len(msgByte)
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, uint64(len))
-
-	_, err = buf.Write(msgByte)
-	return err
 }
