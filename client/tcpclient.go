@@ -2,6 +2,7 @@ package client
 
 import (
 	"net"
+	"strings"
 	"time"
 
 	"github.com/glstr/gwatcher/util"
@@ -32,18 +33,26 @@ func (c *TcpClient) Start() error {
 		}
 	}()
 
+	util.DisplaySocketOption(conn)
+
+	var sum int
+	var count int
+
+	msg := "h"
+	msg = strings.Repeat(msg, 69411)
 	for {
-		msg := "hello world"
 		util.Notice("start write")
 		timeout := time.Now().Add(15 * time.Second)
 		conn.SetWriteDeadline(timeout)
-		count, err := conn.Write([]byte(msg))
+		packetSize, err := conn.Write([]byte(msg))
 		if err != nil {
 			util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
 			return err
 		}
-		util.Notice("write count:%d", count)
-		return nil
+		sum += packetSize
+		count += 1
+		util.Notice("write packetSize:%d, count:%d, sum:%d", packetSize, count, sum)
+		//return nil
 	}
 	return nil
 }

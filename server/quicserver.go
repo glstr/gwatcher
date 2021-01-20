@@ -22,7 +22,6 @@ func NewQuicServer(addr string) *QuicServer {
 
 func (s *QuicServer) Start() error {
 	log.Printf("start quic server")
-	//quic.utils.DefaultLogger.SetLogLevel(utils.LogLevelDebug)
 	listener, err := quic.ListenAddr(s.addr, util.GenerateTLSConfig(), nil)
 	if err != nil {
 		return err

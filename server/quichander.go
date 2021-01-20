@@ -12,9 +12,16 @@ type QuicConnWrapper struct {
 }
 
 func NewQuicConnWrapper(session quic.Session) *QuicConnWrapper {
-	return &QuicConnWrapper{
+	w := &QuicConnWrapper{
 		session: session,
 	}
+
+	//go w.run()
+	return w
+}
+
+func (ss *QuicConnWrapper) run() {
+	return
 }
 
 func (ss *QuicConnWrapper) Read(b []byte) (n int, err error) {

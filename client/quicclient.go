@@ -55,8 +55,8 @@ func NewQuicClient(addr string) *QuicClient {
 func (c *QuicClient) Start() error {
 	log.Printf("start quic client")
 	tlsConf := &tls.Config{
-		InsecureSkipVerify: true,
-		NextProtos:         []string{"quic-echo-example"},
+		InsecureSkipVerify: false,
+		NextProtos:         []string{"lcp"},
 	}
 	session, err := quic.DialAddr(c.addr, tlsConf, nil)
 	if err != nil {
@@ -70,7 +70,7 @@ func (c *QuicClient) Start() error {
 		return err
 	}
 
-	message := "hello world"
+	message := "hello world1"
 	fmt.Printf("Client: Sending '%s'\n", message)
 	_, err = stream.Write([]byte(message))
 	if err != nil {

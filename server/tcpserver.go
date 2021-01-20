@@ -35,7 +35,9 @@ func (s *TcpServer) Start() error {
 			continue
 		}
 
-		go s.handleRequest(conn, reqAfterEOF)
+		//go s.handleRequest(conn, reqAfterEOF)
+		util.DisplaySocketOption(conn)
+		go s.handleRequest(conn, doNothing)
 	}
 
 	return nil
