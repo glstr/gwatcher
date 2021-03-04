@@ -27,6 +27,7 @@ func (c *HttpClient) Start() error {
 	url := "http://" + c.addr + "/helloworld"
 	resp, err := client.Get(url)
 	if err != nil {
+		util.Notice("http client failed:%s", err.Error())
 		return err
 	}
 	util.Notice("resp:%v", resp)

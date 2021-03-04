@@ -75,7 +75,6 @@ func reqAfterEOF(conn net.Conn, done <-chan struct{}) error {
 
 // rec only once and do nothing
 func doNothing(conn net.Conn, done <-chan struct{}) error {
-	util.DisplaySocketOption(conn)
 	needRead := true
 	for {
 		select {

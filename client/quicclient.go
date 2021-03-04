@@ -70,6 +70,7 @@ func (c *QuicClient) Start() error {
 		return err
 	}
 
+	defer stream.Close()
 	message := "hello world1"
 	fmt.Printf("Client: Sending '%s'\n", message)
 	_, err = stream.Write([]byte(message))

@@ -67,6 +67,9 @@ func DisplaySocketOption(conn net.Conn) error {
 			return err
 		}
 
+		tcpConn.SetWriteBuffer(5000)
+		tcpConn.SetReadBuffer(1000)
+
 		f := func(fd uintptr) {
 			rdbuf, err := syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
 			if err != nil {
