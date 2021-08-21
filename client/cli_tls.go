@@ -21,6 +21,7 @@ func (c *TlsClient) Start() error {
 	util.Notice("start tls client, add:%s", c.addr)
 	cfg := &tls.Config{
 		InsecureSkipVerify: true,
+		MaxVersion:         tls.VersionTLS12,
 	}
 	conn, err := tls.Dial("tcp", c.addr, cfg)
 	if err != nil {
@@ -46,9 +47,6 @@ func (c *TlsClient) Start() error {
 			util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
 			return err
 		}
-		return err
-		util.Notice("write count:%d", count)
+		time.Sleep(3 * time.Second)
 	}
-	//return writer.Flush()
-	return nil
 }

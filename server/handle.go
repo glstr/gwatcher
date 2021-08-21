@@ -2,12 +2,69 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/glstr/gwatcher/util"
 )
+
+type ServerHandler func(net.Conn, <-chan struct{}) error
+
+type Handler interface {
+	handle(context context.Context, conn net.Conn) error
+}
+
+var handlers = map[HandlerType]Handler{
+	HEcho: &EchoHandler{},
+}
+
+func DisplayHandlers() string {
+	var res []string
+	for htype := range handlers {
+		res = append(res, string(htype))
+	}
+
+	return strings.Join(res, ",")
+}
+
+func GetHandler(htype HandlerType) (Handler, error) {
+	if h, ok := handlers[htype]; ok {
+		return h, nil
+	}
+
+	return nil, ErrNoHandler
+}
+
+type EchoHandler struct{}
+
+func (h *EchoHandler) handle(ctx context.Context, conn net.Conn) error {
+	for {
+		select {
+		case <-ctx.Done():
+			util.Notice("handler exit")
+			return nil
+		default:
+		}
+		buf := make([]byte, 100)
+		_, err := conn.Read(buf)
+		if err != nil {
+			util.Notice("read failed, error_msg:%s", err.Error())
+			return err
+		}
+
+		util.Notice("get content:%s", string(buf))
+		writer := bufio.NewWriter(conn)
+		count, err := writer.Write(buf)
+		if err != nil {
+			util.Notice("write failed, count:%d, error_msg:%s", count, err.Error())
+			return err
+		}
+		writer.Flush()
+	}
+}
 
 func echo(conn net.Conn, done <-chan struct{}) error {
 	for {
@@ -32,7 +89,6 @@ func echo(conn net.Conn, done <-chan struct{}) error {
 		}
 		writer.Flush()
 	}
-	return nil
 }
 
 // rec eof and send req

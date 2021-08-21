@@ -1,34 +1,58 @@
 package server
 
-const (
-	PQuic  = "quic"
-	PUdp   = "udp"
-	PHttp3 = "http3"
-	PTcp   = "tcp"
-	PTls   = "tls"
-	PHttp  = "http"
-)
+import "strings"
 
 type Server interface {
 	Start() error
 	Stop()
 }
+type serverFunc func(protocol ProtocolType, handler HandlerType, addr string) Server
 
-func NewServer(protocol string, addr string) Server {
-	switch protocol {
-	case PUdp:
-		return NewUdpServer(addr)
-	case PQuic:
-		return NewQuicServer(addr)
-	case PHttp3:
-		return NewHttp3Server(addr)
-	case PTcp:
-		return NewTcpServer(addr)
-	case PTls:
-		return NewTlsServer(addr)
-	case PHttp:
-		return NewHttpServer(addr)
-	default:
-		return NewQuicServer(addr)
+var serverMap = map[ProtocolType]serverFunc{
+	PUdp:   GetUdpServer,
+	PQuic:  GetQuicServer,
+	PTcp:   GetTcpServer,
+	PTls:   GetTlsServer,
+	PHttp:  GetHttpServer,
+	PHttp3: GetHttp3Server,
+}
+
+func DisplayProtocols() string {
+	var res []string
+	for protocol := range serverMap {
+		res = append(res, string(protocol))
 	}
+
+	return strings.Join(res, ",")
+}
+
+func GetServer(protocol ProtocolType, htype HandlerType, addr string) (Server, error) {
+	if serverFunc, ok := serverMap[protocol]; ok {
+		return serverFunc(protocol, htype, addr), nil
+	}
+	return nil, ErrNoServer
+}
+
+func GetUdpServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewUdpServer(addr)
+}
+
+func GetQuicServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewQuicServer(addr)
+}
+
+func GetTcpServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewTcpServer(addr)
+}
+
+func GetTlsServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewTlsServer(htype, addr)
+}
+
+func GetHttpServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewHttpServer(addr)
+}
+
+func GetHttp3Server(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewHttp3Server(addr)
 }
