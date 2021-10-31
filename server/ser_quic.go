@@ -36,8 +36,6 @@ func (s *QuicServer) Start() error {
 
 		log.Printf("accept success")
 		go handleSession(sess)
-		//handler := NewQuicHanlder(sess)
-		//go handler.Start()
 	}
 }
 

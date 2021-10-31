@@ -16,9 +16,9 @@ import (
 )
 
 func WaitSignal() {
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	//监听所有信号
-	signal.Notify(ch, os.Kill, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	//阻塞直到有信号传入
 	fmt.Println("启动")
 	s := <-ch
@@ -45,9 +45,16 @@ func GenerateTLSConfig() *tls.Config {
 	if err != nil {
 		panic(err)
 	}
+
+	keyLog, err := os.OpenFile("data/log_file.key", os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		panic(err)
+	}
+
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		NextProtos:   []string{"quic-echo-example"},
+		KeyLogWriter: keyLog,
 	}
 }
 

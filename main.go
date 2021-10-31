@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/glstr/gwatcher/action"
-	"github.com/glstr/gwatcher/server"
 	"github.com/urfave/cli"
 )
 
@@ -27,50 +26,9 @@ func main() {
 		},
 
 		Commands: []cli.Command{
-			{
-				Name:    "server",
-				Aliases: []string{"ser"},
-				Usage:   "start a server",
-				Action:  action.StartServer,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "protocol, p",
-						Value: "udp",
-						Usage: "server protocol, support:" + server.DisplayProtocols(),
-					},
-
-					&cli.StringFlag{
-						Name:  "address, addr",
-						Value: "0.0.0.0:8888",
-						Usage: "server address",
-					},
-
-					&cli.StringFlag{
-						Name:  "handler, hd",
-						Value: string(server.HEcho),
-						Usage: "server handler, support:" + server.DisplayHandlers(),
-					},
-				},
-			},
-			{
-				Name:    "client",
-				Aliases: []string{"cli"},
-				Usage:   "start a client",
-				Action:  action.StartClient,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "protocol, p",
-						Value: "udp",
-						Usage: "server protocol, support udp & quic",
-					},
-
-					&cli.StringFlag{
-						Name:  "address, addr",
-						Value: "127.0.0.1:8888",
-						Usage: "server protocol, support udp & quic",
-					},
-				},
-			},
+			action.ServerCmd,
+			action.ClientCmd,
+			action.CodecCmd,
 		},
 	}
 

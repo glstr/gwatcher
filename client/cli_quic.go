@@ -23,8 +23,8 @@ func NewQuicClient(addr string) *QuicClient {
 func (c *QuicClient) Start() error {
 	log.Printf("start quic client")
 	tlsConf := &tls.Config{
-		InsecureSkipVerify: false,
-		NextProtos:         []string{"lcp"},
+		InsecureSkipVerify: true,
+		NextProtos:         []string{"quic-echo-example"},
 	}
 	session, err := quic.DialAddr(c.addr, tlsConf, nil)
 	if err != nil {
