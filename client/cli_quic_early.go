@@ -8,26 +8,29 @@ import (
 	"log"
 
 	"github.com/glstr/gwatcher/util"
-	quic "github.com/lucas-clemente/quic-go"
+	"github.com/lucas-clemente/quic-go"
 )
 
-type QuicClient struct {
+type QuicEarlyClient struct {
 	addr string
 }
 
-func NewQuicClient(addr string) *QuicClient {
-	return &QuicClient{
-		addr: addr,
-	}
+func NewQuicEarlyClient(addr string) *QuicEarlyClient {
+	return &QuicEarlyClient{addr: addr}
 }
 
-func (c *QuicClient) Start() error {
-	util.Notice("start quic client")
+func (c *QuicEarlyClient) Start() error {
+	util.Notice("start quic early client")
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
 	}
-	session, err := quic.DialAddr(c.addr, tlsConf, nil)
+
+	session, err := quic.DialAddrEarly(c.addr, tlsConf, nil)
+	if err != nil {
+		return err
+	}
+
 	if err != nil {
 		log.Printf("dial failed, error_msg:%s", err.Error())
 		return err

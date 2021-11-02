@@ -54,5 +54,4 @@ func (c *TcpClient) Start() error {
 		util.Notice("write packetSize:%d, count:%d, sum:%d", packetSize, count, sum)
 		//return nil
 	}
-	return nil
 }

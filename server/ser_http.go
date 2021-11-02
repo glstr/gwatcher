@@ -28,5 +28,4 @@ func (s *HttpServer) Start() error {
 }
 
 func (s *HttpServer) Stop() {
-	return
 }

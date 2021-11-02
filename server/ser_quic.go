@@ -31,7 +31,7 @@ func (s *QuicServer) Start() error {
 		sess, err := listener.Accept(context.Background())
 		if err != nil {
 			log.Printf("accept failed, error_msg:%s", err.Error())
-			return err
+			continue
 		}
 
 		log.Printf("accept success")
@@ -40,7 +40,6 @@ func (s *QuicServer) Start() error {
 }
 
 func (s *QuicServer) Stop() {
-	return
 }
 
 func handleSession(sess quic.Session) error {

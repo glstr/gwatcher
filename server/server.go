@@ -9,12 +9,13 @@ type Server interface {
 type serverFunc func(protocol ProtocolType, handler HandlerType, addr string) Server
 
 var serverMap = map[ProtocolType]serverFunc{
-	PUdp:   GetUdpServer,
-	PQuic:  GetQuicServer,
-	PTcp:   GetTcpServer,
-	PTls:   GetTlsServer,
-	PHttp:  GetHttpServer,
-	PHttp3: GetHttp3Server,
+	PUdp:       GetUdpServer,
+	PQuic:      GetQuicServer,
+	PQuicEarly: GetQuicEarlyServer,
+	PTcp:       GetTcpServer,
+	PTls:       GetTlsServer,
+	PHttp:      GetHttpServer,
+	PHttp3:     GetHttp3Server,
 }
 
 func DisplayProtocols() string {
@@ -39,6 +40,10 @@ func GetUdpServer(protocol ProtocolType, htype HandlerType, addr string) Server 
 
 func GetQuicServer(protocol ProtocolType, htype HandlerType, addr string) Server {
 	return NewQuicServer(addr)
+}
+
+func GetQuicEarlyServer(protocol ProtocolType, htype HandlerType, addr string) Server {
+	return NewQuicEarlyServer(addr)
 }
 
 func GetTcpServer(protocol ProtocolType, htype HandlerType, addr string) Server {

@@ -151,5 +151,4 @@ func doNothing(conn net.Conn, done <-chan struct{}) error {
 
 		}
 	}
-	return nil
 }

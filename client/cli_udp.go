@@ -33,5 +33,4 @@ func (c *UdpClient) Start() error {
 		log.Printf("count:%d", count)
 		time.Sleep(1 * time.Second)
 	}
-	return nil
 }
