@@ -64,5 +64,10 @@ func (p *parser) Marshal(writer io.Writer, msg *MessageContainer) error {
 	binary.Write(&buf, binary.BigEndian, uint32(len))
 
 	_, err = buf.Write(msgByte)
+	if err != nil {
+		return err
+	}
+
+	_, err = writer.Write(buf.Bytes())
 	return err
 }

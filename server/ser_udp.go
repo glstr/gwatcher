@@ -31,7 +31,6 @@ func (p *EchoProccessor) Proccess(conn net.Conn) error {
 		}
 		log.Printf("content:%s", string(content))
 	}
-	return nil
 }
 
 func (p *EchoProccessor) Stop() {

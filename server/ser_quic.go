@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"io"
 	"log"
 
 	"github.com/glstr/gwatcher/msg"
@@ -11,7 +10,8 @@ import (
 )
 
 type QuicServer struct {
-	addr string
+	addr    string
+	cancelF context.CancelFunc
 }
 
 func NewQuicServer(addr string) *QuicServer {
@@ -28,37 +28,44 @@ func (s *QuicServer) Start() error {
 	}
 
 	for {
-		sess, err := listener.Accept(context.Background())
+		ctx, cancelF := context.WithCancel(context.Background())
+		s.cancelF = cancelF
+		sess, err := listener.Accept(ctx)
 		if err != nil {
-			log.Printf("accept failed, error_msg:%s", err.Error())
+			util.Notice("quic accept failed, error_msg:%s", err.Error())
 			continue
 		}
 
-		log.Printf("accept success")
-		go handleSession(sess)
+		//go handleSession(sess)
+		util.Notice("new sess accept")
+		handler := NewQuicHanlder(sess)
+		handler.Start()
 	}
 }
 
 func (s *QuicServer) Stop() {
-}
-
-func handleSession(sess quic.Session) error {
-	stream, err := sess.AcceptStream(context.Background())
-	if err != nil {
-		log.Printf("accept stream failed, error_msg:%s", err.Error())
-		return err
+	if s.cancelF != nil {
+		s.cancelF()
 	}
-
-	log.Printf("stream_id:%d", stream.StreamID())
-	// Echo through the loggingWriter
-	_, err = io.Copy(util.LoggingWriter{stream}, stream)
-	return err
 }
+
+//func handleSession(sess quic.Session) error {
+//	stream, err := sess.AcceptStream(context.Background())
+//	if err != nil {
+//		log.Printf("accept stream failed, error_msg:%s", err.Error())
+//		return err
+//	}
+//
+//	log.Printf("stream_id:%d", stream.StreamID())
+//	// Echo through the loggingWriter
+//	return err
+//}
 
 type QuicHandler struct {
 	s          quic.Session
 	readQueue  chan *msg.MessageContainer
 	writeQueue chan *msg.MessageContainer
+	done       <-chan struct{}
 }
 
 func NewQuicHanlder(s quic.Session) *QuicHandler {
@@ -76,14 +83,36 @@ func (qh *QuicHandler) Start() error {
 	return nil
 }
 
+func (qh *QuicHandler) Stop() error {
+	err := qh.s.CloseWithError(quic.ApplicationErrorCode(0), "")
+	if err != nil {
+		util.Notice("close session failed:%s", err.Error())
+	}
+	return err
+}
+
 func (qh *QuicHandler) ReadLoop() error {
 	for {
+		select {
+		case <-qh.done:
+			util.Notice("read loop exit")
+		default:
+		}
 		stream, err := qh.s.AcceptStream(context.Background())
 		if err != nil {
-			log.Printf("accept stream failed:%s", err.Error())
-			continue
+			util.Notice("accept stream failed:%s", err.Error())
+			return err
 		}
-		go qh.readFromStream(stream)
+
+		util.Notice("new stream:%d", stream.StreamID())
+		go func() {
+			err := qh.readFromStream(stream)
+			if err != nil {
+				util.Notice("read from stream failed:%s", err.Error())
+				qh.Stop()
+				return
+			}
+		}()
 	}
 }
 
@@ -92,10 +121,11 @@ func (qh *QuicHandler) readFromStream(stream quic.Stream) error {
 	parser := msg.NewParser()
 	msg, err := parser.Unmarshal(stream)
 	if err != nil {
-		log.Printf("parse stream packet failed:%s", err.Error())
+		util.Notice("parse stream packet failed:%s", err.Error())
 		return err
 	}
 
+	util.Notice("server read:%v", msg)
 	qh.readQueue <- msg
 	return nil
 }
@@ -103,6 +133,9 @@ func (qh *QuicHandler) readFromStream(stream quic.Stream) error {
 func (qh *QuicHandler) Process() {
 	for {
 		select {
+		case <-qh.done:
+			util.Notice("process done")
+			return
 		case req := <-qh.readQueue:
 			res := qh.process(req)
 			qh.writeQueue <- res
@@ -113,28 +146,33 @@ func (qh *QuicHandler) Process() {
 func (qh *QuicHandler) WriteLoop() {
 	for {
 		select {
+		case <-qh.done:
+			util.Notice("write loop exit")
+			return
 		case res := <-qh.writeQueue:
 			err := qh.WriteToStream(res)
 			if err != nil {
-				log.Printf("write failed:%s", err.Error())
+				util.Notice("write to stream failed:%s", err.Error())
+				qh.Stop()
 			}
 		}
 	}
 }
 
-func (qh *QuicHandler) WriteToStream(res *msg.MessageContainer) error {
-	stream, err := qh.s.OpenUniStream()
+func (qh *QuicHandler) WriteToStream(msgContainer *msg.MessageContainer) error {
+	stream, err := qh.s.OpenStream()
 	if err != nil {
-		log.Printf("open stream failed")
+		util.Notice("open stream failed")
 		return err
 	}
-	defer stream.CancelWrite(0)
+	defer stream.Close()
 	parser := msg.NewParser()
-	err = parser.Marshal(stream, res)
+	err = parser.Marshal(stream, msgContainer)
 	if err != nil {
-		log.Printf("parser marshal failed")
+		util.Notice("parser marshal failed")
 		return err
 	}
+	util.Notice("server write:%v", msgContainer)
 	return nil
 }
 
@@ -143,4 +181,10 @@ func (qh *QuicHandler) process(req *msg.MessageContainer) *msg.MessageContainer 
 	res.Id = req.Id + 100000
 	res.Data = req.Data
 	return res
+}
+
+type Processor struct{}
+
+func (p *Processor) Process(req *msg.MessageContainer) *msg.MessageContainer {
+	return nil
 }

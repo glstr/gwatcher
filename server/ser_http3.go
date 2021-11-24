@@ -27,7 +27,6 @@ func (s *Http3Server) Start() error {
 }
 
 func (s *Http3Server) Stop() {
-	return
 }
 
 func helloHandle(res http.ResponseWriter, req *http.Request) {

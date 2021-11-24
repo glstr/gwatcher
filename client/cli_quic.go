@@ -3,16 +3,16 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
-	"io"
-	"log"
+	"time"
 
+	"github.com/glstr/gwatcher/msg"
 	"github.com/glstr/gwatcher/util"
 	quic "github.com/lucas-clemente/quic-go"
 )
 
 type QuicClient struct {
 	addr string
+	done chan struct{}
 }
 
 func NewQuicClient(addr string) *QuicClient {
@@ -21,40 +21,99 @@ func NewQuicClient(addr string) *QuicClient {
 	}
 }
 
-func (c *QuicClient) Start() error {
+func (c *QuicClient) getSession() (quic.Session, error) {
 	util.Notice("start quic client")
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
 	}
-	session, err := quic.DialAddr(c.addr, tlsConf, nil)
-	if err != nil {
-		log.Printf("dial failed, error_msg:%s", err.Error())
-		return err
-	}
+	return quic.DialAddr(c.addr, tlsConf, nil)
+}
 
-	stream, err := session.OpenStreamSync(context.Background())
-	if err != nil {
-		log.Printf("open stream failed, error_msg:%s", err.Error())
-		return err
-	}
+func (c *QuicClient) Start() error {
+	for {
+		select {
+		case <-c.done:
+			return nil
+		default:
+		}
+		sess, err := c.getSession()
+		if err != nil {
+			util.Notice("get session failed:%s", err.Error())
+			return err
+		}
 
-	defer stream.Close()
-	message := "hello world1"
-	fmt.Printf("Client: Sending '%s'\n", message)
-	_, err = stream.Write([]byte(message))
-	if err != nil {
-		log.Printf("write stream failed, error_msg:%s", err.Error())
-		return err
+		err = c.handleSession(sess)
+		if err != nil {
+			util.Notice("handle session failed:%s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
 	}
+}
 
-	buf := make([]byte, len(message))
-	_, err = io.ReadFull(stream, buf)
-	if err != nil {
-		log.Printf("read res failed, error_msg:%s", err.Error())
-		return err
+func (c *QuicClient) handleSession(sess quic.Session) error {
+	defer func() {
+		sess.CloseWithError(quic.ApplicationErrorCode(0), "application error")
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-c.done:
+				util.Notice("write loop exit")
+				return
+			default:
+			}
+			stream, err := sess.OpenStreamSync(context.Background())
+			if err != nil {
+				util.Notice("open stream failed, error_msg:%s", err.Error())
+				return
+			}
+
+			msgContainer := &msg.MessageContainer{
+				Id:   uint64(time.Now().Unix()),
+				Data: "hello world",
+			}
+			parser := msg.NewParser()
+			err = parser.Marshal(stream, msgContainer)
+			if err != nil {
+				util.Notice("write stream failed, error_msg:%s", err.Error())
+				return
+			}
+			util.Notice("client send:%v", msgContainer)
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	for {
+		select {
+		case <-c.done:
+			util.Notice("read loop exit")
+			return nil
+		default:
+		}
+
+		stream, err := sess.AcceptStream(context.Background())
+		if err != nil {
+			c.Stop()
+			util.Notice("accept stream failed:%s", err.Error())
+			return err
+		}
+
+		parser := msg.NewParser()
+		msg, err := parser.Unmarshal(stream)
+		stream.Close()
+		if err != nil {
+			c.Stop()
+			util.Notice("read data failed:%s", err.Error())
+			return err
+		}
+
+		util.Notice("client read:%v", msg)
 	}
-	fmt.Printf("Client: Got '%s'\n", buf)
+}
 
-	return nil
+func (c *QuicClient) Stop() {
+	close(c.done)
 }
