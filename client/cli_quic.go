@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 	"time"
 
 	"github.com/glstr/gwatcher/msg"
@@ -18,6 +19,13 @@ type QuicClient struct {
 func NewQuicClient(addr string) *QuicClient {
 	return &QuicClient{
 		addr: addr,
+		done: make(chan struct{}),
+	}
+}
+
+func MakeClientQuicConf() *quic.Config {
+	return &quic.Config{
+		MaxIncomingStreams: 2,
 	}
 }
 
@@ -27,7 +35,7 @@ func (c *QuicClient) getSession() (quic.Session, error) {
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
 	}
-	return quic.DialAddr(c.addr, tlsConf, nil)
+	return quic.DialAddr(c.addr, tlsConf, MakeClientQuicConf())
 }
 
 func (c *QuicClient) Start() error {
@@ -73,15 +81,17 @@ func (c *QuicClient) handleSession(sess quic.Session) error {
 
 			msgContainer := &msg.MessageContainer{
 				Id:   uint64(time.Now().Unix()),
-				Data: "hello world",
+				Data: strings.Repeat("h", 10*1024),
 			}
 			parser := msg.NewParser()
 			err = parser.Marshal(stream, msgContainer)
+			stream.Close()
 			if err != nil {
 				util.Notice("write stream failed, error_msg:%s", err.Error())
 				return
 			}
-			util.Notice("client send:%v", msgContainer)
+
+			util.Notice("client send len:%d", len(msgContainer.Data))
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -110,7 +120,7 @@ func (c *QuicClient) handleSession(sess quic.Session) error {
 			return err
 		}
 
-		util.Notice("client read:%v", msg)
+		util.Notice("client read len:%d", len(msg.Data))
 	}
 }
 

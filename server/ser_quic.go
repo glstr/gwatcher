@@ -3,6 +3,9 @@ package server
 import (
 	"context"
 	"log"
+	"reflect"
+	"strings"
+	"time"
 
 	"github.com/glstr/gwatcher/msg"
 	"github.com/glstr/gwatcher/util"
@@ -20,9 +23,15 @@ func NewQuicServer(addr string) *QuicServer {
 	}
 }
 
+func MakeServerQuicConf() *quic.Config {
+	return &quic.Config{
+		MaxIncomingStreams: 2,
+	}
+}
+
 func (s *QuicServer) Start() error {
 	log.Printf("start quic server")
-	listener, err := quic.ListenAddr(s.addr, util.GenerateTLSConfig(), nil)
+	listener, err := quic.ListenAddr(s.addr, util.GenerateTLSConfig(), MakeServerQuicConf())
 	if err != nil {
 		return err
 	}
@@ -73,6 +82,7 @@ func NewQuicHanlder(s quic.Session) *QuicHandler {
 		s:          s,
 		readQueue:  make(chan *msg.MessageContainer, 1024),
 		writeQueue: make(chan *msg.MessageContainer, 1024),
+		done:       make(<-chan struct{}),
 	}
 }
 
@@ -117,15 +127,16 @@ func (qh *QuicHandler) ReadLoop() error {
 }
 
 func (qh *QuicHandler) readFromStream(stream quic.Stream) error {
-	defer stream.CancelRead(0)
+	//defer stream.CancelRead(0)
 	parser := msg.NewParser()
 	msg, err := parser.Unmarshal(stream)
+	stream.Close()
 	if err != nil {
 		util.Notice("parse stream packet failed:%s", err.Error())
 		return err
 	}
 
-	util.Notice("server read:%v", msg)
+	util.Notice("server read len:%d", len(msg.Data))
 	qh.readQueue <- msg
 	return nil
 }
@@ -160,20 +171,30 @@ func (qh *QuicHandler) WriteLoop() {
 }
 
 func (qh *QuicHandler) WriteToStream(msgContainer *msg.MessageContainer) error {
-	stream, err := qh.s.OpenStream()
-	if err != nil {
-		util.Notice("open stream failed")
-		return err
+	var err error
+	for i := 0; i < 3; i++ {
+		var stream quic.Stream
+		stream, err = qh.s.OpenStream()
+		if err != nil {
+			util.Notice("open stream failed:%v", reflect.TypeOf(err))
+			if strings.Contains(err.Error(), "too many open streams") {
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			return err
+		}
+		defer stream.Close()
+		parser := msg.NewParser()
+		err = parser.Marshal(stream, msgContainer)
+		if err != nil {
+			util.Notice("parser marshal failed")
+			return err
+		}
+		util.Notice("server write len:%d", len(msgContainer.Data))
+		return nil
 	}
-	defer stream.Close()
-	parser := msg.NewParser()
-	err = parser.Marshal(stream, msgContainer)
-	if err != nil {
-		util.Notice("parser marshal failed")
-		return err
-	}
-	util.Notice("server write:%v", msgContainer)
-	return nil
+
+	return err
 }
 
 func (qh *QuicHandler) process(req *msg.MessageContainer) *msg.MessageContainer {

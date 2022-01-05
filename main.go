@@ -29,6 +29,7 @@ func main() {
 			action.ServerCmd,
 			action.ClientCmd,
 			action.CodecCmd,
+			action.ProxyCmd,
 		},
 	}
 
