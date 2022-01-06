@@ -19,20 +19,6 @@ type ProxyConfig struct {
 	Port string
 }
 
-const (
-	Socks5Version = 0x05
-)
-
-const (
-	CmdConnect      = 0x01
-	CmdBind         = 0x02
-	CmdUdpASSOCIATE = 0x03
-
-	AtypIPV4   = 0x01
-	AtypDomain = 0x03
-	AtypIPV6   = 0x04
-)
-
 type ProxyType int
 
 const (

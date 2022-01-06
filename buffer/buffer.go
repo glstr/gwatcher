@@ -21,6 +21,7 @@ func NewPacketBuffer() *PacketBuffer {
 }
 
 func (p *PacketBuffer) reset() {
+	p.Buffer = p.Buffer[:0]
 	p.len = 0
 }
 

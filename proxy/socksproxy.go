@@ -62,6 +62,7 @@ func (p *Socks5Proxy) handleConn(conn net.Conn) error {
 		return err
 	}
 
+	util.Notice("start forward")
 	if err := p.forward(dstConn, conn); err != nil {
 		util.Notice("forward failed, error_msg:%s", err.Error())
 		return err
@@ -71,49 +72,35 @@ func (p *Socks5Proxy) handleConn(conn net.Conn) error {
 }
 
 func (p *Socks5Proxy) auth(conn net.Conn) error {
-	// |VER | NMETHODS | METHODS  |
-	// +----+----------+----------+
-	// | 1  |    1     | 1 to 255 |
-	// +----+----------+----------+
-	buf := make([]byte, 256)
-
-	n, err := io.ReadFull(conn, buf[:2])
+	var auth Socks5Auth
+	err := auth.Decode(conn)
 	if err != nil {
 		return err
 	}
 
-	if n != 2 {
-		return errors.New("auth message format err")
+	if auth.Ver != VersionSocks5 {
+		util.Notice("auth.Version:%d", auth.Ver)
+		return errors.New("version err")
 	}
-
-	ver, nMethods := buf[0], buf[1]
-	if ver != 5 {
-		return errors.New("socket version failed")
-	}
-	util.Notice("ver:%d, nMethods:%v", ver, nMethods)
-
-	n, err = io.ReadFull(conn, buf[:nMethods])
-	if err != nil {
-		return err
-	}
-
-	if n != int(nMethods) {
-		return errors.New("auth message methods err")
-	}
-	util.Notice("methods:%v", buf)
 
 	// return no need auth
-	n, err = conn.Write([]byte{0x05, 0x00})
+	authReply := Socks5AuthReply{
+		Ver:    VersionSocks5,
+		Method: MethodNoAuth,
+	}
+
+	n, err := conn.Write(authReply.Encode())
 	if err != nil || n != 2 {
 		return errors.New("reply failed")
 	}
 
+	util.Notice("reply success")
 	return nil
 }
 
 func (p *Socks5Proxy) connect(conn net.Conn) (net.Conn, error) {
 	var req Socks5Request
-	err := req.Load(conn)
+	err := req.Decode(conn)
 	if err != nil {
 		return nil, err
 	}
