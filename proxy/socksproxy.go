@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -51,27 +52,46 @@ func (p *Socks5Proxy) handleTcpListener(listener net.Listener) error {
 }
 
 func (p *Socks5Proxy) handleConn(conn net.Conn) error {
-	if err := p.auth(conn); err != nil {
-		util.Notice("auth failed, error_msg:%s", err.Error())
-		return err
-	}
-
-	dstConn, err := p.connect(conn)
+	auther := NewAuther()
+	err := auther.Auth(conn)
 	if err != nil {
-		util.Notice("connect failed, error_msg:%s", err.Error())
+		util.Notice("auth failed, error:%v", err)
 		return err
 	}
 
-	util.Notice("start forward")
-	if err := p.forward(dstConn, conn); err != nil {
-		util.Notice("forward failed, error_msg:%s", err.Error())
-		return err
-	}
+	forwarder := NewForwarder(conn)
+	return forwarder.Forward()
+}
 
+func SendSocks5Reply(conn net.Conn) error {
+	reply := NewSocksReply()
+	_, err := conn.Write(reply.Bytes())
+	if err != nil {
+		return errors.New("write rsp: " + err.Error())
+	}
 	return nil
 }
 
-func (p *Socks5Proxy) auth(conn net.Conn) error {
+func (p *Socks5Proxy) handlePackConn(packConn net.PacketConn) error {
+	return nil
+}
+
+func (p *Socks5Proxy) waitStop() {
+	<-p.done
+}
+
+func (p *Socks5Proxy) Stop() error {
+	close(p.done)
+	return nil
+}
+
+type Auther struct{}
+
+func NewAuther() *Auther {
+	return &Auther{}
+}
+
+func (a *Auther) Auth(conn net.Conn) error {
 	var auth Socks5Auth
 	err := auth.Decode(conn)
 	if err != nil {
@@ -96,66 +116,70 @@ func (p *Socks5Proxy) auth(conn net.Conn) error {
 
 	util.Notice("reply success")
 	return nil
+
 }
 
-func (p *Socks5Proxy) connect(conn net.Conn) (net.Conn, error) {
-	var req Socks5Request
-	err := req.Decode(conn)
+type Forwarder struct {
+	srcConn net.Conn
+	dstConn net.Conn
+}
+
+func NewForwarder(conn net.Conn) *Forwarder {
+	return &Forwarder{
+		srcConn: conn,
+	}
+}
+
+func (f *Forwarder) Forward() error {
+	err := f.connectDst()
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	return f.forward()
+}
+
+func (f *Forwarder) connectDst() error {
+	var req Socks5Request
+	err := req.Decode(f.srcConn)
+	if err != nil {
+		return err
 	}
 
 	switch req.Cmd {
 	case CmdConnect:
-		dstConn, err := net.Dial("tcp", net.JoinHostPort(req.Addr, fmt.Sprintf("%d", req.Port)))
+		addr := net.JoinHostPort(req.Addr, fmt.Sprintf("%d", req.Port))
+		//dstConn, err := net.Dial("tcp", net.JoinHostPort(req.Addr, fmt.Sprintf("%d", req.Port)))
+		dstConn, err := tls.Dial("tcp", addr, nil)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		err = p.sendReply(conn)
+		err = SendSocks5Reply(f.srcConn)
 		if err != nil {
 			dstConn.Close()
-			return nil, err
+			return err
 		}
-		return dstConn, nil
+		f.dstConn = dstConn
+		return nil
 
 	default:
-		return nil, ErrNotSupportCmd
+		return ErrNotSupportCmd
 	}
 }
 
-func (p *Socks5Proxy) sendReply(conn net.Conn) error {
-	//	+----+-----+-------+------+----------+----------+
-	//  |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
-	//  +----+-----+-------+------+----------+----------+
-	//  | 1  |  1  | X'00' |  1   | Variable |    2     |
-	//  +----+-----+-------+------+----------+----------+
-	_, err := conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
-	if err != nil {
-		return errors.New("write rsp: " + err.Error())
-	}
-	return nil
-}
+func (f *Forwarder) forward() error {
+	conn := tls.Server(f.srcConn, util.GenerateTLSConfig())
+	dstParser := NewParser("dst"+f.dstConn.LocalAddr().String(), f.dstConn)
+	//srcParser := NewParser("src"+f.srcConn.RemoteAddr().String(), f.srcConn)
+	srcParser := NewParser("src"+conn.RemoteAddr().String(), conn)
 
-func (p *Socks5Proxy) forward(dstConn, conn net.Conn) error {
-	forward := func(src, dest net.Conn) {
+	forward := func(src, dest io.ReadWriteCloser) {
 		defer src.Close()
 		defer dest.Close()
 		io.Copy(src, dest)
 	}
-	go forward(dstConn, conn)
-	go forward(conn, dstConn)
-	return nil
-}
 
-func (p *Socks5Proxy) handlePackConn(packConn net.PacketConn) error {
-	return nil
-}
-
-func (p *Socks5Proxy) waitStop() {
-	<-p.done
-}
-
-func (p *Socks5Proxy) Stop() error {
-	close(p.done)
+	go forward(dstParser, srcParser)
+	go forward(srcParser, dstParser)
 	return nil
 }

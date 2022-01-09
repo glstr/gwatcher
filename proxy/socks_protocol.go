@@ -143,3 +143,22 @@ func (req *Socks5Request) getAddr(conn net.Conn) error {
 
 	return nil
 }
+
+type Socks5Reply struct {
+	//	+----+-----+-------+------+----------+----------+
+	//  |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+	//  +----+-----+-------+------+----------+----------+
+	//  | 1  |  1  | X'00' |  1   | Variable |    2     |
+	//  +----+-----+-------+------+----------+----------+
+	reply []byte
+}
+
+func NewSocksReply() *Socks5Reply {
+	return &Socks5Reply{
+		reply: []byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0},
+	}
+}
+
+func (r *Socks5Reply) Bytes() []byte {
+	return r.reply
+}
