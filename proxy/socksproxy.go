@@ -168,7 +168,14 @@ func (f *Forwarder) connectDst() error {
 }
 
 func (f *Forwarder) forward() error {
-	conn := tls.Server(f.srcConn, util.GenerateTLSConfig())
+	//conn := tls.Server(f.srcConn, util.GenerateTLSConfig())
+	tlsConfigMaker := util.NewTlsConfigMaker()
+	tlsConfig, err := tlsConfigMaker.MakeTls2Config()
+	if err != nil {
+		util.Notice("make tls config err:%v", err)
+		return err
+	}
+	conn := tls.Server(f.srcConn, tlsConfig)
 	dstParser := NewParser("dst"+f.dstConn.LocalAddr().String(), f.dstConn)
 	//srcParser := NewParser("src"+f.srcConn.RemoteAddr().String(), f.srcConn)
 	srcParser := NewParser("src"+conn.RemoteAddr().String(), conn)

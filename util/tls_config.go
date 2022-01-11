@@ -10,6 +10,21 @@ import (
 	"os"
 )
 
+type TlsConfigMaker struct{}
+
+func NewTlsConfigMaker() *TlsConfigMaker {
+	return &TlsConfigMaker{}
+}
+
+func (m *TlsConfigMaker) MakeTls2Config() (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair("tls_cer/server.crt", "tls_cer/server.key")
+	if err != nil {
+		return nil, err
+	}
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}}
+	return cfg, nil
+}
+
 // Setup a bare-bones TLS config for the server
 func GenerateTLSConfig() *tls.Config {
 	key, err := rsa.GenerateKey(rand.Reader, 1024)

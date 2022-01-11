@@ -24,10 +24,11 @@ func NewParser(name string, rwc io.ReadWriteCloser) *Parser {
 
 func (p *Parser) Write(input []byte) (int, error) {
 	p.writeLen += len(input)
-	util.Notice("from:%s, write len:%d, sum:%d",
+	util.Notice("from:%s, write len:%d, sum:%d, body:%s",
 		p.Name,
 		len(input),
-		p.writeLen)
+		p.writeLen,
+		string(input))
 	return p.rwc.Write(input)
 }
 
@@ -37,9 +38,10 @@ func (p *Parser) Close() error {
 
 func (p *Parser) Read(input []byte) (n int, err error) {
 	p.readLen += len(input)
-	util.Notice("from:%s, read len:%d, sum:%d",
+	util.Notice("from:%s, read len:%d, sum:%d, body:%s",
 		p.Name,
 		len(input),
-		p.readLen)
+		p.readLen,
+		string(input))
 	return p.rwc.Read(input)
 }
