@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 
+	"github.com/glstr/gwatcher/buffer"
 	"github.com/glstr/gwatcher/util"
 )
 
@@ -38,7 +39,10 @@ type Socks5Auth struct {
 }
 
 func (s *Socks5Auth) Decode(conn net.Conn) error {
-	tmp := make([]byte, 2)
+	buffer := buffer.SmallBytesPool.Get().(*buffer.SmallBytes)
+	defer buffer.Release()
+
+	tmp := buffer.Data[:2]
 	_, err := io.ReadFull(conn, tmp)
 	if err != nil {
 		return err
@@ -85,7 +89,10 @@ type Socks5Request struct {
 }
 
 func (req *Socks5Request) Decode(conn net.Conn) error {
-	tmp := make([]byte, 4)
+	buffer := buffer.SmallBytesPool.Get().(*buffer.SmallBytes)
+	defer buffer.Release()
+
+	tmp := buffer.Data[:4]
 	_, err := io.ReadFull(conn, tmp)
 	if err != nil {
 		return err
@@ -101,7 +108,7 @@ func (req *Socks5Request) Decode(conn net.Conn) error {
 		return err
 	}
 
-	tmp = tmp[:2]
+	tmp = buffer.Data[:2]
 	_, err = io.ReadFull(conn, tmp)
 	if err != nil {
 		return err
@@ -111,9 +118,12 @@ func (req *Socks5Request) Decode(conn net.Conn) error {
 }
 
 func (req *Socks5Request) getAddr(conn net.Conn) error {
+	buffer := buffer.SmallBytesPool.Get().(*buffer.SmallBytes)
+	defer buffer.Release()
+
 	switch req.Atyp {
 	case AtypIPV4:
-		tmp := make([]byte, 4)
+		tmp := buffer.Data[:4]
 		_, err := io.ReadFull(conn, tmp)
 		if err != nil {
 			return err
@@ -124,7 +134,7 @@ func (req *Socks5Request) getAddr(conn net.Conn) error {
 			tmp[2],
 			tmp[3])
 	case AtypDomain:
-		tmp := make([]byte, 1)
+		tmp := buffer.Data[:1]
 		_, err := io.ReadFull(conn, tmp)
 		if err != nil {
 			return err

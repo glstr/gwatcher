@@ -2,41 +2,29 @@ package buffer
 
 import "sync"
 
-const (
-	MaxPacketLen = 1500
-)
+const DefaultSmallBytesLen = 4
 
-type PacketBuffer struct {
-	Buffer   []byte
-	len      int64
-	capacity int64
+type SmallBytes struct {
+	Data []byte
 }
 
-func NewPacketBuffer() *PacketBuffer {
-	return &PacketBuffer{
-		Buffer:   make([]byte, MaxPacketLen),
-		len:      0,
-		capacity: MaxPacketLen,
+func (s *SmallBytes) reset() {
+	s.Data = s.Data[:0]
+}
+
+func (s *SmallBytes) Release() {
+	s.reset()
+	SmallBytesPool.Put(s)
+}
+
+func NewSmallBytes(len int64) *SmallBytes {
+	return &SmallBytes{
+		Data: make([]byte, len),
 	}
 }
 
-func (p *PacketBuffer) reset() {
-	p.Buffer = p.Buffer[:0]
-	p.len = 0
-}
-
-func (p *PacketBuffer) Release() {
-	p.reset()
-	packetBufferPool.Put(p)
-}
-
-var packetBufferPool = sync.Pool{
+var SmallBytesPool sync.Pool = sync.Pool{
 	New: func() interface{} {
-		return NewPacketBuffer()
+		return NewSmallBytes(DefaultSmallBytesLen)
 	},
-}
-
-func GetPacketBuffer() *PacketBuffer {
-	get := packetBufferPool.Get()
-	return get.(*PacketBuffer)
 }

@@ -13,8 +13,8 @@ var ProxyCmd = cli.Command{
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "host",
-			Value: "127.0.0.1",
-			Usage: "proxy host, default: 127.0.0.1",
+			Value: "0.0.0.0",
+			Usage: "proxy host, default: 0.0.0.0",
 		},
 		cli.StringFlag{
 			Name:  "port, p",

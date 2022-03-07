@@ -47,6 +47,7 @@ func (p *Socks5Proxy) handleTcpListener(listener net.Listener) error {
 			util.Notice("accpet failed, error_msg:%s", err.Error())
 			return err
 		}
+		util.Notice("get conn")
 		go p.handleConn(conn)
 	}
 }

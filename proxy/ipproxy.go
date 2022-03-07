@@ -3,7 +3,6 @@ package proxy
 import (
 	"net"
 
-	"github.com/glstr/gwatcher/buffer"
 	"github.com/glstr/gwatcher/util"
 )
 
@@ -33,14 +32,14 @@ func (p *IPProxyer) Start() error {
 }
 
 func (p *IPProxyer) handlePacketConn(conn net.PacketConn) error {
-	packetBuffer := buffer.GetPacketBuffer()
-	n, addr, err := conn.ReadFrom(packetBuffer.Buffer)
+	//packetBuffer := buffer.GetPacketBuffer()
+	buffer := make([]byte, 1024)
+	n, addr, err := conn.ReadFrom(buffer)
 	if err != nil {
 		util.Notice("read from failed, error_msg:%s", err.Error())
 	}
 
 	util.Notice("from addr:%v, data len:%d", addr, n)
-
 	return nil
 }
 
