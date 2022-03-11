@@ -1,12 +1,13 @@
 package proxy
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/glstr/gwatcher/proxy/socks"
+)
 
 var (
 	ErrNotSupportProxyType = errors.New("not support proxy type")
-	ErrVersionFailed       = errors.New("socks5 version err")
-	ErrNotSupportCmd       = errors.New("not support cmd")
-	ErrMessageInvalid      = errors.New("socks5 message invalid")
 )
 
 type Proxy interface {
@@ -37,4 +38,8 @@ func NewProxy(t ProxyType, config *ProxyConfig) (Proxy, error) {
 	}
 
 	return nil, ErrNotSupportProxyType
+}
+
+func NewSocks5Proxy(config *ProxyConfig) Proxy {
+	return socks.NewSocks5Proxy(config.Host, config.Port)
 }

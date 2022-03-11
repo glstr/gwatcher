@@ -1,4 +1,4 @@
-package proxy
+package socks
 
 import (
 	"encoding/binary"
@@ -28,7 +28,7 @@ const (
 	MethodNoAuth = 0x00
 )
 
-type Socks5Auth struct {
+type Socks5Init struct {
 	// |VER | NMETHODS | METHODS  |
 	// +----+----------+----------+
 	// | 1  |    1     | 1 to 255 |
@@ -38,7 +38,7 @@ type Socks5Auth struct {
 	Methods  []byte
 }
 
-func (s *Socks5Auth) Decode(conn net.Conn) error {
+func (s *Socks5Init) Decode(conn net.Conn) error {
 	buffer := buffer.SmallBytesPool.Get().(*buffer.SmallBytes)
 	defer buffer.Release()
 
