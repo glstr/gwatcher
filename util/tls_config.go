@@ -21,7 +21,12 @@ func (m *TlsConfigMaker) MakeTls2Config() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg := &tls.Config{Certificates: []tls.Certificate{cert}}
+
+	f, _ := os.OpenFile("./static/key.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	cfg := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		KeyLogWriter: f,
+	}
 	return cfg, nil
 }
 

@@ -1,10 +1,8 @@
 package socks
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/glstr/gwatcher/util"
@@ -49,13 +47,10 @@ func NewHandshakeHandler() *HandshakeHandler {
 	return &HandshakeHandler{}
 }
 
-type RelayInfo struct {
-	Cmd  byte
-	Addr string
-}
-
 func (h *HandshakeHandler) Handle(conn net.Conn) (RelayInfo, error) {
-	var info RelayInfo
+	info := RelayInfo{
+		SrcConn: conn,
+	}
 
 	var req Socks5Request
 	err := req.Decode(conn)
@@ -63,58 +58,16 @@ func (h *HandshakeHandler) Handle(conn net.Conn) (RelayInfo, error) {
 		return info, err
 	}
 
+	info.Cmd = req.Cmd
 	switch req.Cmd {
 	case CmdConnect:
 		addr := net.JoinHostPort(req.Addr, fmt.Sprintf("%d", req.Port))
 		info.Addr = addr
 		err = SendSocks5Reply(conn)
-		if err != nil {
-			return info, err
-		}
-		return info, nil
-
+		return info, err
+	case CmdUdpASSOCIATE:
+		return info, err
 	default:
 		return info, ErrNotSupportCmd
 	}
-}
-
-type TcpRelayServer struct {
-	srcConn net.Conn
-
-	dstAddr string
-}
-
-func NewTcpRelayServer(srcConn net.Conn, dstAddr string) *TcpRelayServer {
-	return &TcpRelayServer{
-		srcConn: srcConn,
-		dstAddr: dstAddr,
-	}
-}
-
-func (s *TcpRelayServer) Relay() error {
-	dstConn, err := tls.Dial("tcp", s.dstAddr, nil)
-	if err != nil {
-		return err
-	}
-
-	tlsConfigMaker := util.NewTlsConfigMaker()
-	tlsConfig, err := tlsConfigMaker.MakeTls2Config()
-	if err != nil {
-		util.Notice("make tls config err:%v", err)
-		return err
-	}
-	conn := tls.Server(s.srcConn, tlsConfig)
-	dstParser := NewParser("dst"+dstConn.LocalAddr().String(), dstConn)
-	srcParser := NewParser("src"+conn.RemoteAddr().String(), conn)
-
-	forward := func(src, dest io.ReadWriteCloser) {
-		defer src.Close()
-		defer dest.Close()
-		io.Copy(src, dest)
-	}
-
-	go forward(dstParser, srcParser)
-	go forward(srcParser, dstParser)
-	return nil
-
 }

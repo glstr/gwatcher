@@ -16,8 +16,9 @@ type Proxy interface {
 }
 
 type ProxyConfig struct {
-	Host string
-	Port string
+	Host         string
+	Port         string
+	FileHostPort string
 }
 
 type ProxyType int
@@ -41,5 +42,10 @@ func NewProxy(t ProxyType, config *ProxyConfig) (Proxy, error) {
 }
 
 func NewSocks5Proxy(config *ProxyConfig) Proxy {
-	return socks.NewSocks5Proxy(config.Host, config.Port)
+	c := &socks.Socks5ProxyConfig{
+		Host:         config.Host,
+		Port:         config.Port,
+		FileHostPort: config.FileHostPort,
+	}
+	return socks.NewSocks5Proxy(c)
 }

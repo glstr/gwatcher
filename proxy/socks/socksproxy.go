@@ -3,26 +3,49 @@ package socks
 import (
 	"errors"
 	"net"
+	"net/http"
 
 	"github.com/glstr/gwatcher/util"
 )
 
-type Socks5Proxy struct {
-	Host string
-	Port string
-	done chan struct{}
+type Socks5ProxyConfig struct {
+	Host         string
+	Port         string
+	FileHostPort string
 }
 
-func NewSocks5Proxy(host string, port string) *Socks5Proxy {
+type Socks5Proxy struct {
+	Host         string
+	Port         string
+	FileHostPort string
+	done         chan struct{}
+}
+
+func NewSocks5Proxy(c *Socks5ProxyConfig) *Socks5Proxy {
 	return &Socks5Proxy{
-		Host: host,
-		Port: port,
-		done: make(chan struct{}),
+		Host:         c.Host,
+		Port:         c.Port,
+		FileHostPort: c.FileHostPort,
+		done:         make(chan struct{}),
 	}
 }
 
+func (p *Socks5Proxy) startFileServer() error {
+	util.Notice("start file server\n sockurl: http://127.0.0.1:8886/sock.pac\n caurl: http://127.0.0.1:8886/ca.crt")
+	err := http.ListenAndServe(":"+p.FileHostPort, http.FileServer(http.Dir("./static")))
+	if err != nil {
+		util.Notice("start file server failed:%s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (p *Socks5Proxy) Start() error {
+	go p.startFileServer()
+
 	address := net.JoinHostPort(p.Host, p.Port)
+	util.Notice("start socket server:%s", address)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -59,7 +82,7 @@ func (p *Socks5Proxy) handleConn(conn net.Conn) error {
 		return err
 	}
 
-	relaySer := NewTcpRelayServer(conn, info.Addr)
+	relaySer := NewRelayServer(info)
 	return relaySer.Relay()
 }
 

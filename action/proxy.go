@@ -21,6 +21,11 @@ var ProxyCmd = cli.Command{
 			Value: "8887",
 			Usage: "proxy port, default: 8887",
 		},
+		cli.StringFlag{
+			Name:  "file_port, fp",
+			Value: "8886",
+			Usage: "file server port, default:8886",
+		},
 		cli.IntFlag{
 			Name:  "type, t",
 			Value: 0,
@@ -33,10 +38,12 @@ func StartProxy(ctx *cli.Context) error {
 	host := ctx.String("host")
 	port := ctx.String("port")
 	proxyType := ctx.Int("type")
+	filePort := ctx.String("file_port")
 
 	config := proxy.ProxyConfig{
-		Host: host,
-		Port: port,
+		Host:         host,
+		Port:         port,
+		FileHostPort: filePort,
 	}
 
 	proxy, err := proxy.NewProxy(proxy.ProxyType(proxyType), &config)
